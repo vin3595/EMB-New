@@ -19,7 +19,10 @@ class VijayRasRow(BaseModel):
     quantity: float = 0
     unit: str | None = None
     amount: float = 0
-    direction: str  # "in" (Vijay Ras Bhandar, retail incoming) | "out" (Vijay Ras, wholesale outgoing)
+    # "in" (Vijay Ras Bhandar, retail incoming) | "out" (Vijay Ras, wholesale outgoing).
+    # Optional on intake — the routing engine assigns it authoritatively based on which
+    # list (vijay_ras_bhandar vs vijay_ras) the row came from, overriding whatever is sent.
+    direction: str | None = None
 
 
 class StaffAdvanceRow(BaseModel):
