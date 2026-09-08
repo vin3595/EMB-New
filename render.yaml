@@ -1,0 +1,63 @@
+# Render blueprint — best-effort convenience, NOT verified against Render's
+# live docs (this sandbox's network egress blocks render.com, docs sites, and
+# even Docker Hub, so nothing here could be test-deployed or fact-checked).
+# Before trusting this: paste it into Render's Blueprint editor (New > Blueprint),
+# which validates field names before creating anything, or just set both
+# services up manually in the dashboard using the settings in the comments below.
+#
+# Manual setup (reliable fallback if this file's syntax has drifted):
+#   Backend:  New > Web Service > Docker > dockerfilePath backend/Dockerfile,
+#             docker context backend/ > add the env vars listed below.
+#   Frontend: New > Static Site > build command
+#             "cd frontend && yarn install --frozen-lockfile && yarn build",
+#             publish directory "frontend/build" > add REACT_APP_BACKEND_URL
+#             (the backend's Render URL, e.g. https://easemybill-backend.onrender.com)
+#             > add a rewrite rule /* -> /index.html for client-side routing.
+#
+# None of these platforms offer managed MongoDB — use MongoDB Atlas's free
+# tier and paste its connection string as MONGO_URL.
+
+services:
+  - type: web
+    name: easemybill-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    envVars:
+      - key: MONGO_URL
+        sync: false
+      - key: DB_NAME
+        value: easemybill
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: OCR_MODEL_ID
+        value: claude-sonnet-5
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGINS
+        sync: false
+      - key: ADMIN_EMAILS
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: SENDGRID_API_KEY
+        sync: false
+      - key: MSG91_AUTH_KEY
+        sync: false
+      - key: MSG91_SENDER_ID
+        sync: false
+
+  - type: static
+    name: easemybill-frontend
+    buildCommand: cd frontend && yarn install --frozen-lockfile && yarn build
+    staticPublishPath: ./frontend/build
+    envVars:
+      - key: REACT_APP_BACKEND_URL
+        sync: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

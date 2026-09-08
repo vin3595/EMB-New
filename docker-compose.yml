@@ -1,0 +1,47 @@
+# Local/self-host full stack with a REAL MongoDB (this sandbox's network policy
+# blocks pulling the mongo image, so this is untested here — it uses the
+# standard, well-documented mongo:7 image and should work anywhere with normal
+# internet access, e.g. your own machine or a VPS).
+#
+# Usage:
+#   cp backend/.env.example backend/.env   # fill in ANTHROPIC_API_KEY, JWT_SECRET, etc.
+#   docker compose up --build
+#
+# Backend:  http://localhost:8001
+# Frontend: http://localhost:3000
+
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - "27017:27017"
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      MONGO_URL: mongodb://mongo:27017
+      CORS_ORIGINS: http://localhost:3000
+    depends_on:
+      - mongo
+    ports:
+      - "8001:8001"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        REACT_APP_BACKEND_URL: http://localhost:8001
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+
+volumes:
+  mongo_data:
