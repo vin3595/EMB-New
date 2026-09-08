@@ -1,0 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 40 33% 98%;
+  --foreground: 222 20% 12%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 20% 12%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 20% 12%;
+  --primary: 165 65% 28%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 35 40% 94%;
+  --secondary-foreground: 222 20% 15%;
+  --muted: 35 20% 92%;
+  --muted-foreground: 222 10% 40%;
+  --accent: 28 85% 52%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 5 70% 45%;
+  --destructive-foreground: 0 0% 100%;
+  --success: 152 45% 32%;
+  --success-foreground: 0 0% 100%;
+  --warning: 38 90% 50%;
+  --warning-foreground: 20 40% 10%;
+  --border: 35 20% 85%;
+  --input: 35 20% 85%;
+  --ring: 165 65% 28%;
+  --radius: 0.6rem;
+}
+
+.dark {
+  --background: 222 25% 8%;
+  --foreground: 35 20% 92%;
+  --card: 222 22% 11%;
+  --card-foreground: 35 20% 92%;
+  --popover: 222 22% 11%;
+  --popover-foreground: 35 20% 92%;
+  --primary: 165 55% 45%;
+  --primary-foreground: 222 25% 8%;
+  --secondary: 222 18% 16%;
+  --secondary-foreground: 35 20% 92%;
+  --muted: 222 18% 16%;
+  --muted-foreground: 35 10% 65%;
+  --accent: 28 80% 58%;
+  --accent-foreground: 222 25% 8%;
+  --destructive: 5 65% 55%;
+  --destructive-foreground: 0 0% 100%;
+  --success: 152 40% 45%;
+  --success-foreground: 0 0% 100%;
+  --warning: 38 85% 58%;
+  --warning-foreground: 20 40% 10%;
+  --border: 222 18% 20%;
+  --input: 222 18% 20%;
+  --ring: 165 55% 45%;
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: "Figtree", system-ui, sans-serif;
+}
+
+.font-display {
+  font-family: "Playfair Display", serif;
+}
+
+.font-money {
+  font-family: "Source Code Pro", monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 999px;
+}
