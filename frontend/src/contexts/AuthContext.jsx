@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import api from "../lib/api";
+import api, { BACKEND_URL } from "../lib/api";
 
 const AuthContext = createContext(null);
 
@@ -19,27 +19,12 @@ export function AuthProvider({ children }) {
   };
 
   useEffect(() => {
-    const hashParams = new URLSearchParams(window.location.hash.replace("#", "?"));
-    const sessionId = hashParams.get("session_id");
-
-    if (sessionId) {
-      api
-        .post("/auth/session", { session_id: sessionId })
-        .then((res) => {
-          setUser(res.data.user);
-          window.history.replaceState(null, "", window.location.pathname);
-        })
-        .catch(() => setUser(null))
-        .finally(() => setLoading(false));
-    } else {
-      loadSession();
-    }
+    loadSession();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const login = () => {
-    const redirectUrl = `${window.location.origin}/dashboard`;
-    window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
+    window.location.href = `${BACKEND_URL}/api/auth/google/login`;
   };
 
   const logout = async () => {

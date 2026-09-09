@@ -11,8 +11,10 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     ocr_model_id: str = ""
 
-    emergent_llm_key: str = ""
-    emergent_auth_base: str = "https://demobackend.emergentagent.com/auth/v1"
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    google_redirect_uri: str = ""
+    frontend_url: str = "http://localhost:3000"
     jwt_secret: str = "change-me"
     jwt_algorithm: str = "HS256"
     session_ttl_days: int = 7

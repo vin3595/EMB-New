@@ -34,20 +34,52 @@ def decode_jwt(token: str) -> dict:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired session") from exc
 
 
-async def exchange_emergent_session(emergent_session_id: str) -> dict:
-    """Exchange a one-time Emergent OAuth session id for the Google profile.
+GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
+GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
 
-    Returns {id, email, name, picture} as provided by the Emergent auth session-data API.
+
+def build_google_auth_url() -> str:
+    from urllib.parse import urlencode
+
+    params = {
+        "client_id": settings.google_client_id,
+        "redirect_uri": settings.google_redirect_uri,
+        "response_type": "code",
+        "scope": "openid email profile",
+        "access_type": "online",
+        "prompt": "select_account",
+    }
+    return f"{GOOGLE_AUTH_URL}?{urlencode(params)}"
+
+
+async def exchange_google_code(code: str) -> dict:
+    """Exchange a Google OAuth authorization code for the signed-in user's profile.
+
+    Returns {email, name, picture} from Google's userinfo endpoint.
     """
-    url = f"{settings.emergent_auth_base}/env/oauth/session-data"
     async with httpx.AsyncClient(timeout=10.0) as client:
-        resp = await client.get(url, headers={"X-Session-ID": emergent_session_id})
-    if resp.status_code != 200:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not verify Google sign-in session")
-    data = resp.json()
-    if not data.get("email"):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Sign-in session did not return an email")
-    return data
+        token_resp = await client.post(
+            GOOGLE_TOKEN_URL,
+            data={
+                "client_id": settings.google_client_id,
+                "client_secret": settings.google_client_secret,
+                "code": code,
+                "grant_type": "authorization_code",
+                "redirect_uri": settings.google_redirect_uri,
+            },
+        )
+        if token_resp.status_code != 200:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Google sign-in failed")
+        access_token = token_resp.json()["access_token"]
+
+        userinfo_resp = await client.get(GOOGLE_USERINFO_URL, headers={"Authorization": f"Bearer {access_token}"})
+    if userinfo_resp.status_code != 200:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not fetch Google profile")
+    profile = userinfo_resp.json()
+    if not profile.get("email"):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Google account has no email")
+    return profile
 
 
 async def upsert_user(db: AsyncIOMotorDatabase, profile: dict) -> dict:

@@ -1,8 +1,15 @@
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi.responses import RedirectResponse
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from pydantic import BaseModel
 
-from app.auth import SESSION_COOKIE, create_jwt, exchange_emergent_session, get_current_user, upsert_user
+from app.auth import (
+    SESSION_COOKIE,
+    build_google_auth_url,
+    create_jwt,
+    exchange_google_code,
+    get_current_user,
+    upsert_user,
+)
 from app.config import get_settings
 from app.database import get_database
 
@@ -10,19 +17,20 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 settings = get_settings()
 
 
-class SessionExchangeRequest(BaseModel):
-    session_id: str
+@router.get("/google/login")
+async def google_login():
+    if not settings.google_client_id or not settings.google_redirect_uri:
+        raise HTTPException(status_code=500, detail="Google OAuth is not configured on this server")
+    return RedirectResponse(build_google_auth_url())
 
 
-@router.post("/session")
-async def exchange_session(
-    body: SessionExchangeRequest,
-    response: Response,
-    db: AsyncIOMotorDatabase = Depends(get_database),
-):
-    profile = await exchange_emergent_session(body.session_id)
+@router.get("/google/callback")
+async def google_callback(code: str, db: AsyncIOMotorDatabase = Depends(get_database)):
+    profile = await exchange_google_code(code)
     user = await upsert_user(db, profile)
     token = create_jwt(user)
+
+    response = RedirectResponse(f"{settings.frontend_url}/dashboard")
     response.set_cookie(
         key=SESSION_COOKIE,
         value=token,
@@ -32,7 +40,7 @@ async def exchange_session(
         max_age=settings.session_ttl_days * 24 * 3600,
         path="/",
     )
-    return {"user": _public_user(user)}
+    return response
 
 
 @router.get("/me")
