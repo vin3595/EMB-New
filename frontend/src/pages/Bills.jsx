@@ -4,6 +4,7 @@ import { AlertTriangle, ScanLine, Trash2, UploadCloud } from "lucide-react";
 import api from "../lib/api";
 import { formatINR, formatDateIST } from "../lib/format";
 import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "../components/ui/table";
 import { Badge } from "../components/ui/badge";
@@ -28,6 +29,7 @@ export default function Bills() {
   const [scanning, setScanning] = useState(false);
   const [preview, setPreview] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState("");
   const fileInputRef = useRef(null);
 
   const loadBills = useCallback(async () => {
@@ -44,6 +46,11 @@ export default function Bills() {
   useEffect(() => {
     loadBills();
   }, [loadBills]);
+
+  const filteredBills = bills.filter((b) => {
+    const q = search.toLowerCase();
+    return b.vendor.toLowerCase().includes(q) || (b.invoice_number || "").toLowerCase().includes(q);
+  });
 
   const handleFile = async (e) => {
     const file = e.target.files?.[0];
@@ -136,7 +143,16 @@ export default function Bills() {
         <CardHeader>
           <CardTitle>Recent Bills</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {status === "ready" && bills.length > 0 && (
+            <Input
+              data-testid="bills-search-input"
+              placeholder="Search by vendor or invoice #…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="max-w-xs"
+            />
+          )}
           {status === "loading" && <LoadingRows testId="bills-loading" />}
           {status === "error" && <ErrorState message="Could not load bills." onRetry={loadBills} testId="bills-error" />}
           {status === "ready" && bills.length === 0 && (
@@ -151,7 +167,10 @@ export default function Bills() {
               }
             />
           )}
-          {status === "ready" && bills.length > 0 && (
+          {status === "ready" && bills.length > 0 && filteredBills.length === 0 && (
+            <EmptyState testId="bills-search-empty" title="No bills match your search" />
+          )}
+          {status === "ready" && filteredBills.length > 0 && (
             <Table data-testid="bills-table">
               <TableHeader>
                 <TableRow>
@@ -164,7 +183,7 @@ export default function Bills() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {bills.map((bill) => (
+                {filteredBills.map((bill) => (
                   <TableRow key={bill.id} data-testid={`bill-row-${bill.id}`}>
                     <TableCell className="font-medium">{bill.vendor}</TableCell>
                     <TableCell>{formatDateIST(bill.bill_date)}</TableCell>

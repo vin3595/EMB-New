@@ -122,7 +122,17 @@ async def petpooja_sync(file: UploadFile, user: dict = Depends(get_current_user)
             )
             created += 1
 
+    await tdb.petpooja_syncs.insert_one(
+        {"id": new_id(), "filename": file.filename, "updated": updated, "created": created, "created_at": utc_now()}
+    )
     return {"updated": updated, "created": created}
+
+
+@router.get("/recipes/petpooja-sync/history")
+async def petpooja_sync_history(user: dict = Depends(get_current_user), db: AsyncIOMotorDatabase = Depends(get_database)):
+    tdb = tenant_db(db, user)
+    history = await tdb.petpooja_syncs.find({}, {"_id": 0}).sort("created_at", -1).limit(20).to_list(length=20)
+    return {"history": history}
 
 
 @router.post("/prep-batches")

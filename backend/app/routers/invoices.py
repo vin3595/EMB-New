@@ -3,6 +3,7 @@ from datetime import date
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Response
 from motor.motor_asyncio import AsyncIOMotorDatabase
+from pydantic import BaseModel
 
 from app.auth import get_current_user
 from app.database import get_database, tenant_db
@@ -13,6 +14,12 @@ from app.services.invoice_templates import render_invoice_html
 from app.services.notifications import send_email_with_attachment
 
 router = APIRouter(prefix="/api/invoices", tags=["invoices"])
+
+VALID_PAYMENT_STATUSES = {"unpaid", "paid", "partial"}
+
+
+class PaymentStatusUpdate(BaseModel):
+    payment_status: str
 
 
 async def _next_invoice_number(tdb) -> str:
@@ -77,6 +84,25 @@ async def get_invoice(invoice_id: str, user: dict = Depends(get_current_user), d
     invoice = await tdb.invoices.find_one({"id": invoice_id}, {"_id": 0})
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
+    return {"invoice": invoice}
+
+
+@router.patch("/{invoice_id}/payment-status")
+async def update_payment_status(
+    invoice_id: str,
+    body: PaymentStatusUpdate,
+    user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_database),
+):
+    if body.payment_status not in VALID_PAYMENT_STATUSES:
+        raise HTTPException(status_code=400, detail=f"payment_status must be one of {sorted(VALID_PAYMENT_STATUSES)}")
+    tdb = tenant_db(db, user)
+    result = await tdb.invoices.update_one(
+        {"id": invoice_id}, {"$set": {"payment_status": body.payment_status, "updated_at": utc_now()}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    invoice = await tdb.invoices.find_one({"id": invoice_id}, {"_id": 0})
     return {"invoice": invoice}
 
 

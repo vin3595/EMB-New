@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { AlertTriangle, Download, Eye, Mail, Printer, Trash2 } from "lucide-react";
+import { AlertTriangle, Download, Eye, History, Mail, Printer, Trash2 } from "lucide-react";
 import api from "../lib/api";
 import { formatINR, formatDateIST } from "../lib/format";
 import { Button } from "../components/ui/button";
@@ -22,6 +22,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "../components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "../components/ui/dialog";
 import { LoadingRows, EmptyState, ErrorState } from "../components/StateViews";
 import VoucherSlipDialog from "../components/VoucherSlipDialog";
 
@@ -37,6 +38,63 @@ function downloadBlob(data, filename, mime) {
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+}
+
+function BackfillDialog({ onDone }) {
+  const [open, setOpen] = useState(false);
+  const [range, setRange] = useState({ date_from: "", date_to: "" });
+  const [running, setRunning] = useState(false);
+
+  const handleRun = async () => {
+    if (!range.date_from || !range.date_to) {
+      toast.error("Pick both dates");
+      return;
+    }
+    setRunning(true);
+    try {
+      const res = await api.post("/vouchers/backfill", null, { params: range });
+      toast.success(`Processed ${res.data.sheets_processed} sheets, created ${res.data.vouchers_created} vouchers`);
+      setOpen(false);
+      onDone();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Backfill failed");
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button data-testid="vouchers-backfill-button" variant="outline">
+          <History className="h-4 w-4 mr-2" /> Backfill
+        </Button>
+      </DialogTrigger>
+      <DialogContent data-testid="backfill-dialog">
+        <DialogHeader>
+          <DialogTitle>Backfill Historical Vouchers</DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          Generates vouchers for every daily sheet in this range that hasn't been converted yet. Safe to run repeatedly — sheets that already have vouchers are skipped.
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label htmlFor="backfill-from">From</Label>
+            <Input data-testid="backfill-date-from" id="backfill-from" type="date" value={range.date_from} onChange={(e) => setRange((r) => ({ ...r, date_from: e.target.value }))} />
+          </div>
+          <div>
+            <Label htmlFor="backfill-to">To</Label>
+            <Input data-testid="backfill-date-to" id="backfill-to" type="date" value={range.date_to} onChange={(e) => setRange((r) => ({ ...r, date_to: e.target.value }))} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button data-testid="backfill-run-button" onClick={handleRun} disabled={running}>
+            {running ? "Running…" : "Run Backfill"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 export default function Vouchers() {
@@ -141,6 +199,7 @@ export default function Vouchers() {
           <p className="text-sm text-muted-foreground">CA-ready accounting vouchers generated from your daily sheets.</p>
         </div>
         <div className="flex gap-2">
+          <BackfillDialog onDone={load} />
           <Button data-testid="vouchers-export-tally-button" variant="outline" onClick={() => handleExport("tally")}>
             <Download className="h-4 w-4 mr-2" /> Tally XML
           </Button>

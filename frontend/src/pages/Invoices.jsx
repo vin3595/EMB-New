@@ -127,6 +127,16 @@ export default function Invoices() {
     }
   };
 
+  const handlePaymentStatusChange = async (id, payment_status) => {
+    try {
+      await api.patch(`/invoices/${id}/payment-status`, { payment_status });
+      setInvoices((prev) => prev.map((inv) => (inv.id === id ? { ...inv, payment_status } : inv)));
+      toast.success("Payment status updated");
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Could not update payment status");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -155,7 +165,22 @@ export default function Invoices() {
                     <TableCell>{formatDateIST(inv.invoice_date)}</TableCell>
                     <TableCell>{inv.customer_name}</TableCell>
                     <TableCell className="font-money">{formatINR(inv.total)}</TableCell>
-                    <TableCell><Badge variant={inv.payment_status === "paid" ? "success" : "secondary"}>{inv.payment_status}</Badge></TableCell>
+                    <TableCell>
+                      <Select value={inv.payment_status} onValueChange={(v) => handlePaymentStatusChange(inv.id, v)}>
+                        <SelectTrigger data-testid={`invoice-payment-status-${inv.id}`} className="w-28 h-8">
+                          <SelectValue>
+                            <Badge variant={inv.payment_status === "paid" ? "success" : inv.payment_status === "partial" ? "warning" : "secondary"}>
+                              {inv.payment_status}
+                            </Badge>
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="unpaid">Unpaid</SelectItem>
+                          <SelectItem value="partial">Partial</SelectItem>
+                          <SelectItem value="paid">Paid</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
                     <TableCell className="flex gap-1">
                       <Button data-testid={`invoice-download-pdf-${inv.id}`} variant="ghost" size="icon" title="Download PDF" onClick={() => window.open(`${BACKEND_URL}/api/invoices/${inv.id}/pdf`, "_blank")}>
                         <Download className="h-4 w-4" />
