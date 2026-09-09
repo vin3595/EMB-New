@@ -30,7 +30,11 @@ async def google_callback(code: str, db: AsyncIOMotorDatabase = Depends(get_data
     user = await upsert_user(db, profile)
     token = create_jwt(user)
 
-    response = RedirectResponse(f"{settings.frontend_url}/dashboard")
+    # Frontend and backend live on different subdomains, so a cookie set here would be a
+    # third-party cookie on every later API call and gets silently blocked by modern browsers.
+    # Hand the JWT back in the URL fragment instead — it never reaches the server in a Referer
+    # or access log — and the frontend stores it to send as a Bearer token from then on.
+    response = RedirectResponse(f"{settings.frontend_url}/#auth_token={token}")
     response.set_cookie(
         key=SESSION_COOKIE,
         value=token,
