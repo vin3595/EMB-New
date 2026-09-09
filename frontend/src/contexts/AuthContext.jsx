@@ -3,6 +3,22 @@ import api, { BACKEND_URL, clearAuthToken, setAuthToken } from "../lib/api";
 
 const AuthContext = createContext(null);
 
+// Runs once, synchronously, the moment this module is first imported — i.e. before
+// ReactDOM ever renders a single component. The OAuth callback lands on "/" with the
+// token in the URL hash, but "/" itself falls through to a catch-all route that
+// redirects to "/dashboard"; that redirect fires (and wipes the hash) before any
+// useEffect would get a chance to run. Capturing the token here, ahead of all
+// rendering and routing, avoids that race entirely.
+(function captureAuthTokenFromUrl() {
+  if (typeof window === "undefined") return;
+  const hashParams = new URLSearchParams(window.location.hash.replace("#", "?"));
+  const authToken = hashParams.get("auth_token");
+  if (authToken) {
+    setAuthToken(authToken);
+    window.history.replaceState(null, "", window.location.pathname + window.location.search);
+  }
+})();
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -19,12 +35,6 @@ export function AuthProvider({ children }) {
   };
 
   useEffect(() => {
-    const hashParams = new URLSearchParams(window.location.hash.replace("#", "?"));
-    const authToken = hashParams.get("auth_token");
-    if (authToken) {
-      setAuthToken(authToken);
-      window.history.replaceState(null, "", window.location.pathname);
-    }
     loadSession();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
